@@ -36,105 +36,140 @@ export type CompanyInfo = {
 
 // Database functions
 export async function getProducts(): Promise<Product[]> {
-  const { data, error } = await supabase
-    .from('products')
-    .select('*')
-    .order('created_at', { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error('Error fetching products:', error);
+    if (error) {
+      console.error('Error fetching products:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Supabase connection error:', error);
     return [];
   }
-
-  return data || [];
 }
 
 export async function getProduct(id: string): Promise<Product | null> {
-  const { data, error } = await supabase
-    .from('products')
-    .select('*')
-    .eq('id', id)
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', id)
+      .single();
 
-  if (error) {
-    console.error('Error fetching product:', error);
+    if (error) {
+      console.error('Error fetching product:', error);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Supabase connection error:', error);
     return null;
   }
-
-  return data;
 }
 
 export async function addProduct(product: Omit<Product, 'id'>): Promise<Product | null> {
-  const { data, error } = await supabase
-    .from('products')
-    .insert(product)
-    .select()
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .insert(product)
+      .select()
+      .single();
 
-  if (error) {
-    console.error('Error adding product:', error);
+    if (error) {
+      console.error('Error adding product:', error);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Supabase connection error:', error);
     return null;
   }
-
-  return data;
 }
 
 export async function updateProduct(id: string, updates: Partial<Product>): Promise<Product | null> {
-  const { data, error } = await supabase
-    .from('products')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
 
-  if (error) {
-    console.error('Error updating product:', error);
+    if (error) {
+      console.error('Error updating product:', error);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Supabase connection error:', error);
     return null;
   }
-
-  return data;
 }
 
 export async function deleteProduct(id: string): Promise<boolean> {
-  const { error } = await supabase
-    .from('products')
-    .delete()
-    .eq('id', id);
+  try {
+    const { error } = await supabase
+      .from('products')
+      .delete()
+      .eq('id', id);
 
-  if (error) {
-    console.error('Error deleting product:', error);
+    if (error) {
+      console.error('Error deleting product:', error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Supabase connection error:', error);
     return false;
   }
-
-  return true;
 }
 
 export async function getOrders(): Promise<Order[]> {
-  const { data, error } = await supabase
-    .from('orders')
-    .select('*')
-    .order('date', { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .order('date', { ascending: false });
 
-  if (error) {
-    console.error('Error fetching orders:', error);
+    if (error) {
+      console.error('Error fetching orders:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Supabase connection error:', error);
     return [];
   }
-
-  return data || [];
 }
 
 export async function getMessages(): Promise<Message[]> {
-  const { data, error } = await supabase
-    .from('messages')
-    .select('*')
-    .order('date', { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .order('date', { ascending: false });
 
-  if (error) {
-    console.error('Error fetching messages:', error);
+    if (error) {
+      console.error('Error fetching messages:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Supabase connection error:', error);
     return [];
   }
-
-  return data || [];
 }
 
 export async function getCompanyInfo(): Promise<CompanyInfo> {
