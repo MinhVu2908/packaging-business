@@ -1,7 +1,8 @@
-import { getProducts } from "@/lib/mock-data";
+import Link from 'next/link'
+import { getProducts } from '@/lib/mock-data'
 
 export default async function StorePage() {
-  const products = await getProducts();
+  const products = await getProducts()
 
   return (
     <section className="space-y-8">
@@ -12,7 +13,7 @@ export default async function StorePage() {
             <h1 className="mt-2 text-3xl font-semibold text-slate-900">Sản phẩm đóng gói</h1>
           </div>
           <p className="max-w-md text-sm text-slate-600">
-            Xem các mẫu giấy tấm 3 lớp và 5 lớp. Nhấp vào sản phẩm để xem chi tiết linerboard, medium và thêm vào giỏ.
+            Xem các mẫu giấy tấm 3 lớp và 5 lớp. Nhấp vào sản phẩm để chọn kích thước và thêm vào giỏ hàng.
           </p>
         </div>
       </div>
@@ -46,14 +47,17 @@ export default async function StorePage() {
               </dl>
               <div className="mt-5 flex items-center justify-between gap-3">
                 <span className="font-semibold text-slate-900">{product.price.toLocaleString()}đ</span>
-                <button className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800">
-                  Thêm vào giỏ
-                </button>
+                <Link
+                  href={`/store/${product.id}`}
+                  className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
+                >
+                  Chọn kích thước
+                </Link>
               </div>
             </div>
           </article>
         ))}
       </div>
     </section>
-  );
+  )
 }

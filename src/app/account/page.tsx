@@ -1,7 +1,47 @@
-import { getOrders, getMessages, getCompanyInfo } from "@/lib/mock-data";
+import { createClient } from "@/lib/supabase-server";
+import { redirect } from "next/navigation";
 
 export default async function AccountPage() {
-  const [orders, messages, companyInfo] = await Promise.all([getOrders(), getMessages(), getCompanyInfo()]);
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect('/auth');
+  }
+
+  const [ordersRes, messagesRes, profile] = await Promise.all([
+    supabase
+      .from('orders')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('date', { ascending: false }),
+    supabase
+      .from('messages')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('date', { ascending: false }),
+    supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single(),
+  ])
+
+  const orders = ordersRes.data || []
+  const messages = messagesRes.data || []
+
+  const companyInfo = profile.error || !profile.data ? {
+    company: 'Siêu Thị Giấy',
+    contactName: user.email?.split('@')[0] || 'User',
+    email: user.email || '',
+    phone: '',
+  } : {
+    company: profile.data.company_name || 'Siêu Thị Giấy',
+    contactName: profile.data.contact_name || user.email?.split('@')[0] || 'User',
+    email: user.email || '',
+    phone: profile.data.phone || '',
+  }
+
   return (
     <section className="space-y-8">
       <div className="rounded-lg bg-white p-8 shadow-sm ring-1 ring-slate-200">
@@ -9,6 +49,7 @@ export default async function AccountPage() {
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Tài khoản khách hàng</p>
             <h1 className="mt-2 text-3xl font-semibold text-slate-900">Thông tin và đơn hàng</h1>
+            <p className="mt-1 text-sm text-slate-600">{user.email}</p>
           </div>
           <p className="max-w-md text-sm text-slate-600">
             Kiểm tra thông tin doanh nghiệp, tin nhắn hợp tác và lịch sử mua hàng. Dễ mở rộng cho chức năng đăng nhập và quản lý đơn sau này.

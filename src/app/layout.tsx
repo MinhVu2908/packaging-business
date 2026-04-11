@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
+import { AuthButton } from "@/components/AuthButton";
+import { Navigation } from "@/components/Navigation";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -17,13 +19,6 @@ export const metadata: Metadata = {
   title: "Siêu Thị Giấy - Packaging Store",
   description: "Website bán giấy tấm đóng gói 3 lớp và 5 lớp cho doanh nghiệp.",
 };
-
-const navItems = [
-  { href: "/", label: "Trang Chủ" },
-  { href: "/store", label: "Cửa Hàng" },
-  { href: "/cart", label: "Giỏ Hàng" },
-  { href: "/account", label: "Tài Khoản" },
-];
 
 export default function RootLayout({
   children,
@@ -47,19 +42,12 @@ export default function RootLayout({
                     <p className="text-xs text-slate-500">Cửa Hàng Giấy Tấm Online</p>
                   </div>
                 </Link>
-                <div className="text-right text-sm text-slate-600">0.00đ <span className="text-xs">0 mục</span></div>
+                <div className="flex items-center gap-6">
+                  <AuthButton />
+                  <div className="text-right text-sm text-slate-600">0.00đ <span className="text-xs">0 mục</span></div>
+                </div>
               </div>
-              <nav className="flex flex-wrap gap-6 text-sm font-medium">
-                {navItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="text-slate-700 transition hover:text-slate-900"
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </nav>
+              <Navigation />
             </div>
           </header>
 

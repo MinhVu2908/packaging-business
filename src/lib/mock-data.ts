@@ -60,10 +60,10 @@ export async function getProduct(id: string): Promise<Product | null> {
       .from('products')
       .select('*')
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      console.error('Error fetching product:', error);
+      console.error('Error fetching product:', { id, error });
       return null;
     }
 
@@ -136,9 +136,16 @@ export async function deleteProduct(id: string): Promise<boolean> {
 
 export async function getOrders(): Promise<Order[]> {
   try {
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return []
+    }
+
     const { data, error } = await supabase
       .from('orders')
       .select('*')
+      .eq('user_id', user.id)
       .order('date', { ascending: false });
 
     if (error) {
@@ -155,9 +162,16 @@ export async function getOrders(): Promise<Order[]> {
 
 export async function getMessages(): Promise<Message[]> {
   try {
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return []
+    }
+
     const { data, error } = await supabase
       .from('messages')
       .select('*')
+      .eq('user_id', user.id)
       .order('date', { ascending: false });
 
     if (error) {
@@ -173,13 +187,111 @@ export async function getMessages(): Promise<Message[]> {
 }
 
 export async function getCompanyInfo(): Promise<CompanyInfo> {
-  // For now, return hardcoded data. In a real app, this would come from a database table
-  return {
-    company: "Siêu Thị Giấy",
-    contactName: "Nguyễn Văn A",
-    email: "contact@sieuthigiay.vn",
-    phone: "+84 123 456 789",
-  };
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return {
+        company: "Siêu Thị Giấy",
+        contactName: "Nguyễn Văn A",
+        email: "contact@sieuthigiay.vn",
+        phone: "+84 123 456 789",
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (error || !data) {
+      // Return default info if no profile exists
+      return {
+        company: "Siêu Thị Giấy",
+        contactName: user.email?.split('@')[0] || "User",
+        email: user.email || "",
+        phone: "",
+      }
+    }
+
+    return {
+      company: data.company_name || "Siêu Thị Giấy",
+      contactName: data.contact_name || user.email?.split('@')[0] || "User",
+      email: user.email || "",
+      phone: data.phone || "",
+    }
+  } catch (error) {
+    console.error('Error fetching company info:', error);
+    return {
+      company: "Siêu Thị Giấy",
+      contactName: "Nguyễn Văn A",
+      email: "contact@sieuthigiay.vn",
+      phone: "+84 123 456 789",
+    }
+  }
+}
+
+export async function createOrder(order: Omit<Order, 'id' | 'user_id'>): Promise<Order | null> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return null
+    }
+
+    const orderId = `order-${Date.now()}`
+    const { data, error } = await supabase
+      .from('orders')
+      .insert({
+        ...order,
+        id: orderId,
+        user_id: user.id,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating order:', error);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Supabase connection error:', error);
+    return null;
+  }
+}
+
+export async function createMessage(message: Omit<Message, 'id' | 'user_id'>): Promise<Message | null> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return null
+    }
+
+    const messageId = `msg-${Date.now()}`
+    const { data, error } = await supabase
+      .from('messages')
+      .insert({
+        ...message,
+        id: messageId,
+        user_id: user.id,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating message:', error);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Supabase connection error:', error);
+    return null;
+  }
 }
 
 // Legacy exports for backward compatibility (will be removed)
