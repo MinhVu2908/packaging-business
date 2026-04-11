@@ -1,8 +1,10 @@
-import { products } from "@/lib/mock-data";
+import { getProducts } from "@/lib/mock-data";
 
-export default function StorePage() {
+export default async function StorePage() {
+  const products = await getProducts();
+
   return (
-    <section className="space-y-10">
+    <section className="space-y-8">
       <div className="rounded-lg bg-white p-8 shadow-sm ring-1 ring-slate-200">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>

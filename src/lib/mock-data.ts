@@ -1,3 +1,5 @@
+import { supabase } from './supabase'
+
 export type Product = {
   id: string;
   name: string;
@@ -11,105 +13,148 @@ export type Product = {
 
 export type CartItem = Product & { quantity: number };
 
-export const products: Product[] = [
-  {
-    id: "pack-3layer-a",
-    name: "Giấy Carton 3 Lớp A",
-    category: "3 lớp",
-    layers: "3 lớp",
-    linerboard: "Testliner",
-    medium: "B-Flute",
-    description: "Giấy carton 3 lớp nhẹ, phù hợp cho đóng gói hàng hóa tiêu dùng và bảo vệ sản phẩm.",
-    price: 4500,
-  },
-  {
-    id: "pack-3layer-b",
-    name: "Giấy Carton 3 Lớp B",
-    category: "3 lớp",
-    layers: "3 lớp",
-    linerboard: "Kraftliner",
-    medium: "C-Flute",
-    description: "Sản phẩm 3 lớp cao cấp hơn với độ bền tăng cường cho hàng hóa nặng vừa.",
-    price: 5500,
-  },
-  {
-    id: "pack-5layer-a",
-    name: "Giấy Carton 5 Lớp A",
-    category: "5 lớp",
-    layers: "5 lớp",
-    linerboard: "Kraftliner",
-    medium: "BC-Flute",
-    description: "Giấy carton 5 lớp gia cố tối đa dành cho thiết kế bao bì chịu lực và vận chuyển chuyên nghiệp.",
-    price: 9800,
-  },
-  {
-    id: "pack-5layer-b",
-    name: "Giấy Carton 5 Lớp B",
-    category: "5 lớp",
-    layers: "5 lớp",
-    linerboard: "Testliner",
-    medium: "EB-Flute",
-    description: "Giấy 5 lớp thân thiện với môi trường, đa dụng cho sản phẩm nội thất, điện tử và vật tư công nghiệp.",
-    price: 10200,
-  },
-];
+export type Order = {
+  id: string;
+  status: string;
+  summary: string;
+  date: string;
+};
 
-export const cartItems: CartItem[] = [
-  {
-    id: "pack-3layer-a",
-    name: "Giấy Carton 3 Lớp A",
-    category: "3 lớp",
-    layers: "3 lớp",
-    linerboard: "Testliner",
-    medium: "B-Flute",
-    description: "Giấy carton 3 lớp nhẹ, phù hợp cho đóng gói hàng hóa tiêu dùng và bảo vệ sản phẩm.",
-    price: 4500,
-    quantity: 2,
-  },
-  {
-    id: "pack-5layer-a",
-    name: "Giấy Carton 5 Lớp A",
-    category: "5 lớp",
-    layers: "5 lớp",
-    linerboard: "Kraftliner",
-    medium: "BC-Flute",
-    description: "Giấy carton 5 lớp gia cố tối đa dành cho thiết kế bao bì chịu lực và vận chuyển chuyên nghiệp.",
-    price: 9800,
-    quantity: 1,
-  },
-];
+export type Message = {
+  id: string;
+  title: string;
+  body: string;
+  date: string;
+};
 
+export type CompanyInfo = {
+  company: string;
+  contactName: string;
+  email: string;
+  phone: string;
+};
+
+// Database functions
+export async function getProducts(): Promise<Product[]> {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching products:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+export async function getProduct(id: string): Promise<Product | null> {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) {
+    console.error('Error fetching product:', error);
+    return null;
+  }
+
+  return data;
+}
+
+export async function addProduct(product: Omit<Product, 'id'>): Promise<Product | null> {
+  const { data, error } = await supabase
+    .from('products')
+    .insert(product)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error adding product:', error);
+    return null;
+  }
+
+  return data;
+}
+
+export async function updateProduct(id: string, updates: Partial<Product>): Promise<Product | null> {
+  const { data, error } = await supabase
+    .from('products')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating product:', error);
+    return null;
+  }
+
+  return data;
+}
+
+export async function deleteProduct(id: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('products')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting product:', error);
+    return false;
+  }
+
+  return true;
+}
+
+export async function getOrders(): Promise<Order[]> {
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*')
+    .order('date', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching orders:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+export async function getMessages(): Promise<Message[]> {
+  const { data, error } = await supabase
+    .from('messages')
+    .select('*')
+    .order('date', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching messages:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+export async function getCompanyInfo(): Promise<CompanyInfo> {
+  // For now, return hardcoded data. In a real app, this would come from a database table
+  return {
+    company: "Siêu Thị Giấy",
+    contactName: "Nguyễn Văn A",
+    email: "contact@sieuthigiay.vn",
+    phone: "+84 123 456 789",
+  };
+}
+
+// Legacy exports for backward compatibility (will be removed)
+export const products: Product[] = [];
+export const cartItems: CartItem[] = [];
 export const accountInfo = {
   company: "Siêu Thị Giấy",
   contactName: "Nguyễn Văn A",
   email: "contact@sieuthigiay.vn",
   phone: "+84 123 456 789",
-  messages: [
-    {
-      id: "msg-1",
-      title: "Xác nhận đơn hàng mẫu",
-      body: "Đơn hàng mẫu của bạn đã được nhận. Chúng tôi sẽ liên hệ để chốt kích thước và vật liệu.",
-      date: "2026-04-06",
-    },
-    {
-      id: "msg-2",
-      title: "Gửi file thiết kế",
-      body: "Xin vui lòng gửi file thiết kế nếu cần in ấn trên bao bì. Hỗ trợ định dạng AI/PDF/PNG.",
-      date: "2026-04-04",
-    },
-  ],
-  orders: [
-    {
-      id: "order-5021",
-      status: "Đã hoàn thành",
-      summary: "Giấy carton 3 lớp B - 20 kiện",
-      date: "2026-03-15",
-    },
-    {
-      id: "order-5034",
-      status: "Đang xử lý",
-      summary: "Giấy carton 5 lớp A - 10 kiện",
-      date: "2026-03-28",
-    },
-  ],
+  messages: [] as Message[],
+  orders: [] as Order[],
 };

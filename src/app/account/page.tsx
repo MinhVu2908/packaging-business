@@ -1,6 +1,7 @@
-import { accountInfo } from "@/lib/mock-data";
+import { getOrders, getMessages, getCompanyInfo } from "@/lib/mock-data";
 
-export default function AccountPage() {
+export default async function AccountPage() {
+  const [orders, messages, companyInfo] = await Promise.all([getOrders(), getMessages(), getCompanyInfo()]);
   return (
     <section className="space-y-8">
       <div className="rounded-lg bg-white p-8 shadow-sm ring-1 ring-slate-200">
@@ -18,22 +19,22 @@ export default function AccountPage() {
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-6">
             <h2 className="text-lg font-semibold text-slate-900">Thông tin công ty</h2>
             <p className="mt-4 text-xs text-slate-700">
-              <span className="font-semibold">Tên công ty:</span> {accountInfo.company}
+              <span className="font-semibold">Tên công ty:</span> {companyInfo.company}
             </p>
             <p className="mt-2 text-xs text-slate-700">
-              <span className="font-semibold">Người liên hệ:</span> {accountInfo.contactName}
+              <span className="font-semibold">Người liên hệ:</span> {companyInfo.contactName}
             </p>
             <p className="mt-2 text-xs text-slate-700">
-              <span className="font-semibold">Email:</span> {accountInfo.email}
+              <span className="font-semibold">Email:</span> {companyInfo.email}
             </p>
             <p className="mt-2 text-xs text-slate-700">
-              <span className="font-semibold">Điện thoại:</span> {accountInfo.phone}
+              <span className="font-semibold">Điện thoại:</span> {companyInfo.phone}
             </p>
           </div>
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-6">
             <h2 className="text-lg font-semibold text-slate-900">Tin nhắn mới</h2>
             <div className="mt-4 space-y-3">
-              {accountInfo.messages.map((message) => (
+              {messages.map((message) => (
                 <div key={message.id} className="rounded-lg bg-white p-3 shadow-sm">
                   <div className="flex items-center justify-between gap-4">
                     <p className="text-sm font-semibold text-slate-900">{message.title}</p>
@@ -50,7 +51,7 @@ export default function AccountPage() {
       <div className="rounded-lg bg-white p-8 shadow-sm ring-1 ring-slate-200">
         <h2 className="text-2xl font-semibold text-slate-900">Đơn hàng trước đây</h2>
         <div className="mt-6 space-y-3">
-          {accountInfo.orders.map((order) => (
+          {orders.map((order) => (
             <div key={order.id} className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50 p-6 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-semibold text-slate-900">{order.summary}</p>
