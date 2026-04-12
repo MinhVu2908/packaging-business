@@ -114,6 +114,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
+  const adminSupabase = await createAdminClient()
   const {
     data: { user },
     error: userError,
@@ -140,7 +141,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Verify the design request exists and get cart_item_id
-  const { data: designRequest, error: findError } = await supabase
+  const { data: designRequest, error: findError } = await adminSupabase
     .from('design_requests')
     .select('cart_item_id, user_id')
     .eq('id', designRequestId)
@@ -164,7 +165,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: uploadError.message }, { status: 500 })
     }
 
-    const { error: fileInsertError } = await supabase.from('design_files').insert({
+    const { error: fileInsertError } = await adminSupabase.from('design_files').insert({
       id: `file-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       design_request_id: designRequestId,
       type: 'admin_response',
@@ -181,7 +182,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Update design request status and notes
-  const { data: updatedRequest, error: updateError } = await supabase
+  const { data: updatedRequest, error: updateError } = await adminSupabase
     .from('design_requests')
     .update({
       status,
