@@ -4,6 +4,7 @@ CREATE TABLE user_profiles (
   company_name TEXT,
   contact_name TEXT,
   phone TEXT,
+  role TEXT NOT NULL DEFAULT 'customer' CHECK (role IN ('customer', 'admin')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -57,24 +58,108 @@ CREATE TABLE cart_items (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Create design requests table
+CREATE TABLE design_requests (
+  id TEXT PRIMARY KEY,
+  cart_item_id TEXT REFERENCES cart_items(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  status TEXT NOT NULL DEFAULT 'pending',
+  admin_notes TEXT,
+  customer_notes TEXT,
+  customer_confirmed BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create design files table
+CREATE TABLE design_files (
+  id TEXT PRIMARY KEY,
+  design_request_id TEXT REFERENCES design_requests(id) ON DELETE CASCADE,
+  type TEXT NOT NULL,
+  file_url TEXT NOT NULL,
+  filename TEXT NOT NULL,
+  mime_type TEXT,
+  size INTEGER,
+  uploaded_by TEXT NOT NULL,
+  uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Enable RLS on tables
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cart_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE design_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE design_files ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
 CREATE POLICY "Users can view own profile" ON user_profiles
   FOR ALL USING (auth.uid() = id);
 
+CREATE POLICY "Admins can view all profiles" ON user_profiles
+  FOR ALL USING (
+    auth.uid() = id OR EXISTS (
+      SELECT 1 FROM user_profiles up WHERE up.id = auth.uid() AND up.role = 'admin'
+    )
+  );
+
 CREATE POLICY "Users can view own orders" ON orders
   FOR ALL USING (auth.uid() = user_id);
+
+CREATE POLICY "Admins can view all orders" ON orders
+  FOR ALL USING (
+    auth.uid() = user_id OR EXISTS (
+      SELECT 1 FROM user_profiles up WHERE up.id = auth.uid() AND up.role = 'admin'
+    )
+  );
 
 CREATE POLICY "Users can view own messages" ON messages
   FOR ALL USING (auth.uid() = user_id);
 
+CREATE POLICY "Admins can view all messages" ON messages
+  FOR ALL USING (
+    auth.uid() = user_id OR EXISTS (
+      SELECT 1 FROM user_profiles up WHERE up.id = auth.uid() AND up.role = 'admin'
+    )
+  );
+
 CREATE POLICY "Users can manage own cart items" ON cart_items
   FOR ALL USING (auth.uid() = user_id);
+
+CREATE POLICY "Admins can manage all cart items" ON cart_items
+  FOR ALL USING (
+    auth.uid() = user_id OR EXISTS (
+      SELECT 1 FROM user_profiles up WHERE up.id = auth.uid() AND up.role = 'admin'
+    )
+  );
+
+CREATE POLICY "Users can manage own design requests" ON design_requests
+  FOR ALL USING (auth.uid() = user_id);
+
+CREATE POLICY "Admins can manage all design requests" ON design_requests
+  FOR ALL USING (
+    auth.uid() = user_id OR EXISTS (
+      SELECT 1 FROM user_profiles up WHERE up.id = auth.uid() AND up.role = 'admin'
+    )
+  );
+
+CREATE POLICY "Users can view own design files" ON design_files
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM design_requests dr
+      WHERE dr.id = design_request_id AND dr.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Admins can view all design files" ON design_files
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM design_requests dr
+      WHERE dr.id = design_request_id AND dr.user_id = auth.uid()
+    ) OR EXISTS (
+      SELECT 1 FROM user_profiles up WHERE up.id = auth.uid() AND up.role = 'admin'
+    )
+  );
 
 -- Insert sample data
 INSERT INTO products (id, name, category, layers, linerboard, medium, description, price) VALUES

@@ -1,9 +1,16 @@
 import { createClient } from "@/lib/supabase-server";
+import { ensureUserProfile } from '@/lib/user-profiles'
 import { redirect } from "next/navigation";
 
 export default async function AccountPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect('/auth');
+  }
+
+  await ensureUserProfile(supabase, user.id, user.email ?? undefined);
 
   if (!user) {
     redirect('/auth');

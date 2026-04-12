@@ -19,3 +19,22 @@ export async function createClient() {
     }
   )
 }
+
+export async function createAdminClient() {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (serviceRoleKey) {
+    return createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey, {
+      cookies: {
+        getAll() {
+          return []
+        },
+        setAll() {
+          return undefined
+        },
+      },
+    })
+  }
+
+  return createClient()
+}
