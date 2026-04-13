@@ -45,6 +45,7 @@ type DesignRequest = {
     contact_name: string | null
     phone: string | null
   } | null
+  message_count?: number
 }
 
 type UserGroup = {
@@ -236,7 +237,12 @@ export default function AdminDesignRequestsPage() {
                             </p>
                           </div>
 
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {request.message_count > 0 && (
+                              <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-1 text-xs font-medium text-blue-800">
+                                💬 {request.message_count} tin nhắn
+                              </span>
+                            )}
                             <Link
                               href={`/admin/design-requests/${request.id}`}
                               className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"

@@ -47,6 +47,15 @@ type DesignRequest = {
   } | null
 }
 
+type ProductMessage = {
+  id: string
+  cart_item_id: string
+  sender_id: string
+  sender_role: 'customer' | 'admin'
+  message: string
+  created_at: string
+}
+
 export default function AdminDesignRequestDetailPage() {
   const params = useParams() as { id: string }
   const { isLoading: isAdminLoading } = useAdminGuard()
@@ -57,6 +66,9 @@ export default function AdminDesignRequestDetailPage() {
   const [responseFiles, setResponseFiles] = useState<File[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [status, setStatus] = useState('review_ready')
+  const [messages, setMessages] = useState<ProductMessage[]>([])
+  const [newMessage, setNewMessage] = useState('')
+  const [sendingMessage, setSendingMessage] = useState(false)
 
   useEffect(() => {
     loadRequest()
@@ -78,6 +90,50 @@ export default function AdminDesignRequestDetailPage() {
     setLoading(false)
   }
 
+  const loadMessages = async () => {
+    if (!request?.cart_item_id) return
+
+    const res = await fetch(`/api/admin/messages?design_request_id=${params.id}`)
+    if (res.ok) {
+      const data = await res.json()
+      setMessages(data.messages || [])
+    }
+  }
+
+  useEffect(() => {
+    if (request) {
+      loadMessages()
+    }
+  }, [request])
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !request?.cart_item_id) return
+
+    setSendingMessage(true)
+    try {
+      const res = await fetch('/api/admin/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cart_item_id: request.cart_item_id,
+          message: newMessage.trim()
+        })
+      })
+
+      if (res.ok) {
+        setNewMessage('')
+        await loadMessages()
+      } else {
+        const data = await res.json()
+        setError(data?.error ?? 'Không thể gửi tin nhắn.')
+      }
+    } catch (error) {
+      setError('Không thể gửi tin nhắn.')
+    } finally {
+      setSendingMessage(false)
+    }
+  }
+
   const handleFileChange = (files: FileList | null) => {
     setResponseFiles(files ? Array.from(files) : [])
   }
@@ -88,6 +144,7 @@ export default function AdminDesignRequestDetailPage() {
     setError('')
 
     const formData = new FormData()
+    formData.append('design_request_id', params.id)
     formData.append('admin_notes', adminNotes)
     formData.append('status', status)
     responseFiles.forEach((file) => formData.append('files', file))
@@ -210,6 +267,61 @@ export default function AdminDesignRequestDetailPage() {
               {submitting ? 'Đang gửi...' : 'Gửi phản hồi'}
             </button>
           </form>
+        </div>
+      </div>
+
+      {/* Messages Section */}
+      <div className="mt-8 rounded-lg border border-slate-200 bg-white p-6">
+        <h2 className="text-xl font-semibold text-slate-900">Trò chuyện với khách hàng</h2>
+
+        {/* Messages Display */}
+        <div className="mt-4 max-h-96 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-4">
+          {messages.length === 0 ? (
+            <p className="text-center text-sm text-slate-500">Chưa có tin nhắn nào</p>
+          ) : (
+            <div className="space-y-3">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex ${message.sender_role === 'admin' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-xs rounded-lg px-3 py-2 text-sm ${
+                      message.sender_role === 'admin'
+                        ? 'bg-slate-900 text-white'
+                        : 'bg-white text-slate-900 border border-slate-200'
+                    }`}
+                  >
+                    <p>{message.message}</p>
+                    <p className={`mt-1 text-xs ${
+                      message.sender_role === 'admin' ? 'text-slate-300' : 'text-slate-500'
+                    }`}>
+                      {new Date(message.created_at).toLocaleString('vi-VN')}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Send Message */}
+        <div className="mt-4 flex gap-3">
+          <input
+            type="text"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+            placeholder="Nhập tin nhắn cho khách hàng..."
+            className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+          />
+          <button
+            onClick={handleSendMessage}
+            disabled={sendingMessage || !newMessage.trim()}
+            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+          >
+            {sendingMessage ? 'Đang gửi...' : 'Gửi'}
+          </button>
         </div>
       </div>
 

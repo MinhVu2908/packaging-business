@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase-server";
 import { ensureUserProfile } from '@/lib/user-profiles'
 import { redirect } from "next/navigation";
+import ProfileForm from './ProfileForm'
 
 export default async function AccountPage() {
   const supabase = await createClient();
@@ -95,6 +96,8 @@ export default async function AccountPage() {
           </div>
         </div>
       </div>
+
+      <ProfileForm initialProfile={companyInfo} />
 
       <div className="rounded-lg bg-white p-8 shadow-sm ring-1 ring-slate-200">
         <h2 className="text-2xl font-semibold text-slate-900">Đơn hàng trước đây</h2>

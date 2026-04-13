@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import CartItemDetail from "@/components/CartItemDetail";
 
 type DesignFile = {
   id: string;
@@ -50,6 +51,7 @@ export default function CartPage() {
   const [designNotes, setDesignNotes] = useState<Record<string, string>>({});
   const [uploadingDesignId, setUploadingDesignId] = useState<string | null>(null);
   const [confirmingDesignId, setConfirmingDesignId] = useState<string | null>(null);
+  const [selectedItem, setSelectedItem] = useState<CartItem | null>(null);
 
   const loadCart = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -256,12 +258,20 @@ export default function CartPage() {
                         </div>
                         <p className="text-sm text-slate-600">Đơn giá: {item.unit_price.toLocaleString()}đ</p>
                         <p className="text-base font-semibold text-slate-900">Tổng: {item.total_price.toLocaleString()}đ</p>
-                        <button
-                          onClick={() => removeItem(item.id)}
-                          className="text-sm text-red-600 transition hover:text-red-900"
-                        >
-                          Xóa sản phẩm
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setSelectedItem(item)}
+                            className="text-sm text-slate-900 underline hover:text-slate-600"
+                          >
+                            Xem chi tiết
+                          </button>
+                          <button
+                            onClick={() => removeItem(item.id)}
+                            className="text-sm text-red-600 transition hover:text-red-900"
+                          >
+                            Xóa
+                          </button>
+                        </div>
                       </div>
                     </div>
 
@@ -403,6 +413,18 @@ export default function CartPage() {
           </div>
         </div>
       </div>
+
+      {/* Cart Item Detail Modal */}
+      {selectedItem && (
+        <CartItemDetail
+          item={selectedItem}
+          onUpdate={(updatedItem) => {
+            setItems(items.map(item => item.id === updatedItem.id ? updatedItem : item))
+            setSelectedItem(updatedItem)
+          }}
+          onClose={() => setSelectedItem(null)}
+        />
+      )}
     </section>
   );
 }

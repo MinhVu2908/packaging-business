@@ -157,15 +157,16 @@ export async function PATCH(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { id, quantity } = body
+  const { id, quantity, length_mm, width_mm, options } = body
 
-  if (!id || typeof quantity !== 'number') {
-    return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
+  if (!id) {
+    return NextResponse.json({ error: 'Item ID is required' }, { status: 400 })
   }
 
+  // Get current item data
   const { data: existing, error: fetchError } = await supabase
     .from('cart_items')
-    .select('unit_price')
+    .select('unit_price, quantity, length_mm, width_mm, options')
     .eq('id', id)
     .eq('user_id', user.id)
     .single()
@@ -174,12 +175,44 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Item not found' }, { status: 404 })
   }
 
+  // Prepare update data
+  const updateData: any = {}
+  if (typeof quantity === 'number' && quantity > 0) {
+    updateData.quantity = quantity
+  }
+  if (typeof length_mm === 'number' && length_mm > 0) {
+    updateData.length_mm = length_mm
+  }
+  if (typeof width_mm === 'number' && width_mm > 0) {
+    updateData.width_mm = width_mm
+  }
+  if (options && typeof options === 'object') {
+    updateData.options = options
+  }
+
+  // Recalculate total price if quantity changed
+  if (updateData.quantity !== undefined) {
+    updateData.total_price = existing.unit_price * updateData.quantity
+  } else if (updateData.quantity === undefined) {
+    updateData.total_price = existing.unit_price * existing.quantity
+  }
+
   const { data, error } = await supabase
     .from('cart_items')
-    .update({ quantity, total_price: existing.unit_price * quantity })
+    .update(updateData)
     .eq('id', id)
     .eq('user_id', user.id)
-    .select()
+    .select(`
+      id,
+      product_id,
+      quantity,
+      length_mm,
+      width_mm,
+      unit_price,
+      total_price,
+      options,
+      products(name, category, layers, description)
+    `)
     .single()
 
   if (error) {

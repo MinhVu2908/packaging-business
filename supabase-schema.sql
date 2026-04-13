@@ -84,6 +84,16 @@ CREATE TABLE design_files (
   uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Create product messages table for user-admin conversations on cart items
+CREATE TABLE product_messages (
+  id TEXT PRIMARY KEY,
+  cart_item_id TEXT REFERENCES cart_items(id) ON DELETE CASCADE,
+  sender_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  sender_role TEXT NOT NULL CHECK (sender_role IN ('customer', 'admin')),
+  message TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Enable RLS on tables
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
@@ -91,6 +101,7 @@ ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cart_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE design_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE design_files ENABLE ROW LEVEL SECURITY;
+ALTER TABLE product_messages ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
 CREATE POLICY "Users can view own profile" ON user_profiles
@@ -161,6 +172,39 @@ CREATE POLICY "Admins can view all design files" ON design_files
     )
   );
 
+-- RLS Policies for product_messages
+CREATE POLICY "Users can view messages on their cart items" ON product_messages
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM cart_items ci WHERE ci.id = cart_item_id AND ci.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Admins can view all messages" ON product_messages
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM user_profiles up WHERE up.id = auth.uid() AND up.role = 'admin'
+    )
+  );
+
+CREATE POLICY "Users can insert messages on their cart items" ON product_messages
+  FOR INSERT WITH CHECK (
+    auth.uid() = sender_id AND
+    sender_role = 'customer' AND
+    EXISTS (
+      SELECT 1 FROM cart_items ci WHERE ci.id = cart_item_id AND ci.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Admins can insert messages" ON product_messages
+  FOR INSERT WITH CHECK (
+    auth.uid() = sender_id AND
+    sender_role = 'admin' AND
+    EXISTS (
+      SELECT 1 FROM user_profiles up WHERE up.id = auth.uid() AND up.role = 'admin'
+    )
+  );
+
 -- Insert sample data
 INSERT INTO products (id, name, category, layers, linerboard, medium, description, price) VALUES
 ('pack-3layer-a', 'Giấy Carton 3 Lớp A', '3 lớp', '3 lớp', 'Testliner', 'B-Flute', 'Giấy carton 3 lớp nhẹ, phù hợp cho đóng gói hàng hóa tiêu dùng và bảo vệ sản phẩm.', 4500),
@@ -171,3 +215,7 @@ INSERT INTO products (id, name, category, layers, linerboard, medium, descriptio
 -- Note: Sample orders and messages will be created when users sign up
 -- INSERT INTO orders (id, user_id, status, summary, date) VALUES
 -- INSERT INTO messages (id, user_id, title, body, date) VALUES
+
+-- Create indexes for product_messages performance
+CREATE INDEX idx_product_messages_cart_item_id ON product_messages(cart_item_id);
+CREATE INDEX idx_product_messages_sender_id ON product_messages(sender_id);

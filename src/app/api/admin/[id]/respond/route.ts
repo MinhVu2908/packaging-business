@@ -1,16 +1,15 @@
 'use server'
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createAdminClient, createClient } from '@/lib/supabase-server'
+import { createClient } from '@/lib/supabase-server'
 import { requireAdmin } from '@/lib/user-profiles'
 
 function sanitizeFilename(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]/g, '_')
 }
 
-export async function POST(request: NextRequest, { params }: { params: { id?: string } }) {
+export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   const supabase = await createClient()
-  const adminSupabase = await createAdminClient()
   const {
     data: { user },
     error: userError,
@@ -24,22 +23,15 @@ export async function POST(request: NextRequest, { params }: { params: { id?: st
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
+  const designRequestId = params.id
   const formData = await request.formData()
-  const routeId = params.id
-  const payloadId = formData.get('design_request_id')?.toString()
-  const designRequestId = routeId || payloadId
-
-  if (!designRequestId) {
-    return NextResponse.json({ error: 'Missing design request id' }, { status: 400 })
-  }
-
   const adminNotes = formData.get('admin_notes')?.toString() || null
   const status = formData.get('status')?.toString() || 'review_ready'
   const files = formData
     .getAll('files')
     .filter((value): value is File => value instanceof File)
 
-  const { data: designRequest, error: findError } = await adminSupabase
+  const { data: designRequest, error: findError } = await supabase
     .from('design_requests')
     .select('cart_item_id, user_id')
     .eq('id', designRequestId)
@@ -54,7 +46,7 @@ export async function POST(request: NextRequest, { params }: { params: { id?: st
     const storagePath = `${designRequest.user_id}/${designRequest.cart_item_id}/admin/${safeFilename}`
     const fileBuffer = Buffer.from(await file.arrayBuffer())
 
-    const { error: uploadError } = await adminSupabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('designs')
       .upload(storagePath, fileBuffer, { upsert: true })
 
@@ -62,7 +54,7 @@ export async function POST(request: NextRequest, { params }: { params: { id?: st
       return NextResponse.json({ error: uploadError.message }, { status: 500 })
     }
 
-    const { error: fileInsertError } = await adminSupabase.from('design_files').insert({
+    const { error: fileInsertError } = await supabase.from('design_files').insert({
       id: `file-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       design_request_id: designRequestId,
       type: 'admin_response',
@@ -78,7 +70,7 @@ export async function POST(request: NextRequest, { params }: { params: { id?: st
     }
   }
 
-  const { data: updatedRequest, error: updateError } = await adminSupabase
+  const { data: updatedRequest, error: updateError } = await supabase
     .from('design_requests')
     .update({ status, admin_notes: adminNotes, updated_at: new Date().toISOString() })
     .eq('id', designRequestId)

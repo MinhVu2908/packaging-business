@@ -40,6 +40,21 @@ export async function GET(request: NextRequest) {
   const requestIds = Array.from(new Set((designRequests || []).map((request) => request.id)))
   const userIds = Array.from(new Set((designRequests || []).map((request) => request.user_id)))
 
+  // Get message counts for each cart item
+  const { data: messageCounts, error: messagesError } = await adminSupabase
+    .from('product_messages')
+    .select('cart_item_id')
+    .in('cart_item_id', cartItemIds)
+
+  if (messagesError) {
+    return NextResponse.json({ error: messagesError.message }, { status: 500 })
+  }
+
+  const messageCountMap = (messageCounts || []).reduce<Record<string, number>>((acc, message) => {
+    acc[message.cart_item_id] = (acc[message.cart_item_id] || 0) + 1
+    return acc
+  }, {})
+
   const { data: cartItems, error: cartItemsError } = await adminSupabase
     .from('cart_items')
     .select('id,product_id,quantity,length_mm,width_mm,unit_price,total_price,options,products(name,category,layers)')
@@ -107,6 +122,7 @@ export async function GET(request: NextRequest) {
     cart_items: cartItemsMap[request.cart_item_id] || null,
     design_files: filesWithUrlsByRequest[request.id] || [],
     user_profile: profileMap[request.user_id] || null,
+    message_count: messageCountMap[request.cart_item_id] || 0,
   }))
 
   return NextResponse.json(requestsWithDetails)
