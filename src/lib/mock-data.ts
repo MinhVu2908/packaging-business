@@ -7,6 +7,8 @@ export type Product = {
   layers: string;
   linerboard: string;
   medium: string;
+  flute_a?: number | null;
+  flute_b?: number | null;
   description: string;
   price: number;
 };

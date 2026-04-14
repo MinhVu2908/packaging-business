@@ -52,9 +52,20 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const resolvedParams = await params
   const productId = resolvedParams.id
   const body = await request.json()
-  const { name, category, layers, linerboard, medium, description, price } = body
+  const { name, category, layers, linerboard, medium, flute_a, flute_b, description, price } = body
 
-  if (!name && !category && !layers && !linerboard && !medium && !description && typeof price !== 'number') {
+  const hasAny =
+    typeof name === 'string' ||
+    typeof category === 'string' ||
+    typeof layers === 'string' ||
+    typeof linerboard === 'string' ||
+    typeof medium === 'string' ||
+    flute_a !== undefined ||
+    flute_b !== undefined ||
+    typeof description === 'string' ||
+    typeof price === 'number'
+
+  if (!hasAny) {
     return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
   }
 
@@ -63,7 +74,21 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (typeof category === 'string') updates.category = category
   if (typeof layers === 'string') updates.layers = layers
   if (typeof linerboard === 'string') updates.linerboard = linerboard
-  if (typeof medium === 'string') updates.medium = medium
+  if (typeof medium === 'string' && medium.trim().length > 0) updates.medium = medium.trim()
+  if (flute_a !== undefined) {
+    const parsed = typeof flute_a === 'number' ? flute_a : flute_a == null ? null : Number(flute_a)
+    if (!(parsed == null || Number.isFinite(parsed))) {
+      return NextResponse.json({ error: 'Invalid flute_a' }, { status: 400 })
+    }
+    updates.flute_a = parsed
+  }
+  if (flute_b !== undefined) {
+    const parsed = typeof flute_b === 'number' ? flute_b : flute_b == null ? null : Number(flute_b)
+    if (!(parsed == null || Number.isFinite(parsed))) {
+      return NextResponse.json({ error: 'Invalid flute_b' }, { status: 400 })
+    }
+    updates.flute_b = parsed
+  }
   if (typeof description === 'string') updates.description = description
   if (typeof price === 'number') updates.price = price
 

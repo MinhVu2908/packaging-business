@@ -33,7 +33,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  await ensureUserProfile(supabase, user.id, user.email ?? undefined)
+  await ensureUserProfile(supabase, user)
 
   const { data: cartItems, error: cartError } = await supabase
     .from('cart_items')
@@ -116,10 +116,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  await ensureUserProfile(supabase, user.id, user.email ?? undefined)
+  await ensureUserProfile(supabase, user)
 
   const body = await request.json()
-  const { product_id, quantity, length_mm, width_mm, unit_price, total_price, options } = body
+  const { product_id, quantity, length_mm, width_mm, unit_price, total_price, options, design_mode, design_template } = body
 
   const id = `cart-${Date.now()}`
   const { data, error } = await supabase
@@ -140,6 +140,27 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  const designRequestId = `design-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  const mode = typeof design_mode === 'string' ? design_mode : 'custom'
+  const template = typeof design_template === 'string' ? design_template : null
+  const customerNotes =
+    mode === 'template' && template
+      ? `Khách chọn mẫu có sẵn: ${template}`
+      : 'Khách sẽ gửi thiết kế tùy chỉnh.'
+
+  const { error: designError } = await supabase.from('design_requests').insert({
+    id: designRequestId,
+    cart_item_id: data.id,
+    user_id: user.id,
+    status: 'pending',
+    customer_notes: customerNotes,
+  })
+
+  if (designError) {
+    await supabase.from('cart_items').delete().eq('id', data.id).eq('user_id', user.id)
+    return NextResponse.json({ error: designError.message }, { status: 500 })
   }
 
   return NextResponse.json(data)

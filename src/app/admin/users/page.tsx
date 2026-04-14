@@ -1,8 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import Link from 'next/link'
 import { useAdminGuard } from '@/lib/useAdminGuard'
+import {
+  ORDER_ITEM_STATUSES,
+  ORDER_ITEM_STATUS_LABEL_VI,
+  itemStatusBadgeClass,
+  type OrderItemStatus,
+} from '@/lib/order-item-status'
 
 type User = {
   id: string
@@ -12,6 +18,7 @@ type User = {
   phone: string | null
   created_at: string
   updated_at: string
+  itemLineCounts?: Record<OrderItemStatus, number>
   orders?: {
     id: string
     status: string
@@ -94,17 +101,49 @@ export default function AdminUsersPage() {
 
                 <div className="mt-4 grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm font-medium text-slate-900">Đơn hàng ({user.orders?.length ?? 0})</p>
-                    <div className="mt-2 space-y-1">
-                      {(user.orders ?? []).slice(0, 3).map((order) => (
-                        <p key={order.id} className="text-xs text-slate-600">
-                          {order.summary} - {order.status}
-                        </p>
-                      ))}
-                      {(user.orders?.length ?? 0) > 3 && (
-                        <p className="text-xs text-slate-500">+{(user.orders?.length ?? 0) - 3} đơn hàng khác</p>
-                      )}
+                    <p className="text-sm font-medium text-slate-900">
+                      Đơn hàng ({user.orders?.length ?? 0}) · dòng đơn (PO)
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">Trạng thái giao theo từng dòng</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {(() => {
+                        const counts = user.itemLineCounts
+                        const hasLines =
+                          counts && ORDER_ITEM_STATUSES.some((s) => (counts[s] ?? 0) > 0)
+                        if (!hasLines || !counts) {
+                          return (
+                            <span className="text-xs text-slate-500">Chưa có dòng đơn.</span>
+                          )
+                        }
+                        return ORDER_ITEM_STATUSES.map((s) =>
+                          (counts[s] ?? 0) > 0 ? (
+                            <span
+                              key={s}
+                              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ${itemStatusBadgeClass(s)}`}
+                            >
+                              {ORDER_ITEM_STATUS_LABEL_VI[s]} ({counts[s]})
+                            </span>
+                          ) : null
+                        )
+                      })()}
                     </div>
+                    {(user.orders?.length ?? 0) > 0 && (
+                      <div className="mt-3 space-y-1 border-t border-slate-100 pt-3">
+                        <p className="text-xs font-medium text-slate-700">Gần đây</p>
+                        {(user.orders ?? []).slice(0, 3).map((order) => (
+                          <p key={order.id} className="text-xs text-slate-600">
+                            {order.summary}
+                            <span className="text-slate-400">
+                              {' '}
+                              · {new Date(order.date).toLocaleDateString('vi-VN')}
+                            </span>
+                          </p>
+                        ))}
+                        {(user.orders?.length ?? 0) > 3 && (
+                          <p className="text-xs text-slate-500">+{(user.orders?.length ?? 0) - 3} đơn hàng khác</p>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -124,9 +163,12 @@ export default function AdminUsersPage() {
               </div>
 
               <div className="ml-6">
-                <button className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-100">
+                <Link
+                  href={`/admin/users/${user.id}`}
+                  className="inline-flex rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+                >
                   Xem chi tiết
-                </button>
+                </Link>
               </div>
             </div>
           </div>

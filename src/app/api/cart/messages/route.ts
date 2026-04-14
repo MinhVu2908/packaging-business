@@ -2,7 +2,6 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
-import { v4 as uuidv4 } from 'crypto'
 import type { SendMessageRequest, SendMessageResponse } from '@/types/messages'
 
 export async function GET(request: NextRequest) {

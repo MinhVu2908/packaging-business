@@ -1,7 +1,14 @@
 import { createClient } from "@/lib/supabase-server";
 import { ensureUserProfile } from '@/lib/user-profiles'
 import { redirect } from "next/navigation";
+import Link from 'next/link'
 import ProfileForm from './ProfileForm'
+import {
+  ORDER_ITEM_STATUSES,
+  ORDER_ITEM_STATUS_LABEL_VI,
+  countOrderItemsByStatus,
+  itemStatusBadgeClass,
+} from '@/lib/order-item-status'
 
 export default async function AccountPage() {
   const supabase = await createClient();
@@ -11,7 +18,7 @@ export default async function AccountPage() {
     redirect('/auth');
   }
 
-  await ensureUserProfile(supabase, user.id, user.email ?? undefined);
+  await ensureUserProfile(supabase, user);
 
   if (!user) {
     redirect('/auth');
@@ -37,6 +44,20 @@ export default async function AccountPage() {
 
   const orders = ordersRes.data || []
   const messages = messagesRes.data || []
+
+  const orderIds = orders.map((o) => o.id)
+  const itemsByOrderId: Record<string, { item_status: string | null }[]> = {}
+  if (orderIds.length > 0) {
+    const { data: lineRows } = await supabase
+      .from('order_items')
+      .select('order_id, item_status')
+      .eq('user_id', user.id)
+      .in('order_id', orderIds)
+    for (const row of lineRows || []) {
+      if (!row.order_id) continue
+      itemsByOrderId[row.order_id] = [...(itemsByOrderId[row.order_id] || []), row]
+    }
+  }
 
   const companyInfo = profile.error || !profile.data ? {
     company: 'Siêu Thị Giấy',
@@ -101,19 +122,52 @@ export default async function AccountPage() {
 
       <div className="rounded-lg bg-white p-8 shadow-sm ring-1 ring-slate-200">
         <h2 className="text-2xl font-semibold text-slate-900">Đơn hàng trước đây</h2>
+        <p className="mt-2 max-w-3xl text-xs leading-relaxed text-slate-600">
+          Trạng thái giao hàng theo từng dòng (mỗi dòng là một PO):{' '}
+          <span className="font-medium text-slate-800">Chờ xử lý</span> — chưa gửi;{' '}
+          <span className="font-medium text-slate-800">Đang giao</span> — đang vận chuyển;{' '}
+          <span className="font-medium text-slate-800">Đã giao</span> — hoàn tất;{' '}
+          <span className="font-medium text-slate-800">Đã hủy</span> — dòng đã hủy.
+        </p>
         <div className="mt-6 space-y-3">
-          {orders.map((order) => (
-            <div key={order.id} className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50 p-6 sm:flex-row sm:items-center sm:justify-between">
-              <div>
+          {orders.map((order) => {
+            const lineCounts = countOrderItemsByStatus(itemsByOrderId[order.id] || [])
+            const hasLines = ORDER_ITEM_STATUSES.some((s) => lineCounts[s] > 0)
+            return (
+            <div key={order.id} className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50 p-6 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-slate-900">{order.summary}</p>
                 <p className="mt-1 text-xs text-slate-600">Mã đơn: {order.id}</p>
+                <p className="mt-2 text-xs font-medium text-slate-700">Trạng thái giao từng dòng</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {hasLines ? (
+                    ORDER_ITEM_STATUSES.map((s) =>
+                      lineCounts[s] > 0 ? (
+                        <span
+                          key={s}
+                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ${itemStatusBadgeClass(s)}`}
+                        >
+                          {ORDER_ITEM_STATUS_LABEL_VI[s]} ({lineCounts[s]})
+                        </span>
+                      ) : null
+                    )
+                  ) : (
+                    <span className="text-xs text-slate-500">Chưa có dòng chi tiết.</span>
+                  )}
+                </div>
               </div>
-              <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600">
-                <span className="rounded-full bg-white px-3 py-1 shadow-sm">{order.status}</span>
+              <div className="flex flex-shrink-0 flex-wrap items-center gap-3 text-xs text-slate-600 sm:flex-col sm:items-end">
                 <span>{order.date}</span>
+                <Link
+                  href={`/account/orders/${order.id}`}
+                  className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                >
+                  Chi tiết & hóa đơn
+                </Link>
               </div>
             </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </section>

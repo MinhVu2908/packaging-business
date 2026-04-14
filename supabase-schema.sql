@@ -17,6 +17,8 @@ CREATE TABLE products (
   layers TEXT NOT NULL,
   linerboard TEXT NOT NULL,
   medium TEXT NOT NULL,
+  flute_a NUMERIC,
+  flute_b NUMERIC,
   description TEXT NOT NULL,
   price INTEGER NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -32,6 +34,28 @@ CREATE TABLE orders (
   date DATE NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Line items per order (one row per purchased cart line; each has its own PO # and PDF receipt)
+CREATE TABLE order_items (
+  id TEXT PRIMARY KEY,
+  order_id TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  line_index INTEGER NOT NULL,
+  po_number TEXT NOT NULL UNIQUE,
+  product_id TEXT NOT NULL,
+  product_name TEXT NOT NULL,
+  quantity INTEGER NOT NULL,
+  unit_price INTEGER NOT NULL,
+  total_price INTEGER NOT NULL,
+  length_mm INTEGER,
+  width_mm INTEGER,
+  options JSONB,
+  item_status TEXT NOT NULL DEFAULT 'pending' CHECK (item_status IN ('pending', 'on_delivery', 'delivered', 'cancelled')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_order_items_order_id ON order_items(order_id);
+CREATE INDEX idx_order_items_user_id ON order_items(user_id);
 
 -- Create messages table
 CREATE TABLE messages (
@@ -97,6 +121,7 @@ CREATE TABLE product_messages (
 -- Enable RLS on tables
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cart_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE design_requests ENABLE ROW LEVEL SECURITY;
@@ -120,6 +145,31 @@ CREATE POLICY "Users can view own orders" ON orders
 CREATE POLICY "Admins can view all orders" ON orders
   FOR ALL USING (
     auth.uid() = user_id OR EXISTS (
+      SELECT 1 FROM user_profiles up WHERE up.id = auth.uid() AND up.role = 'admin'
+    )
+  );
+
+CREATE POLICY "Users can view own order items" ON order_items
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own order items" ON order_items
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Admins can view all order items" ON order_items
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM user_profiles up WHERE up.id = auth.uid() AND up.role = 'admin'
+    )
+  );
+
+CREATE POLICY "Admins can update all order items" ON order_items
+  FOR UPDATE USING (
+    EXISTS (
+      SELECT 1 FROM user_profiles up WHERE up.id = auth.uid() AND up.role = 'admin'
+    )
+  )
+  WITH CHECK (
+    EXISTS (
       SELECT 1 FROM user_profiles up WHERE up.id = auth.uid() AND up.role = 'admin'
     )
   );
@@ -206,11 +256,11 @@ CREATE POLICY "Admins can insert messages" ON product_messages
   );
 
 -- Insert sample data
-INSERT INTO products (id, name, category, layers, linerboard, medium, description, price) VALUES
-('pack-3layer-a', 'Giấy Carton 3 Lớp A', '3 lớp', '3 lớp', 'Testliner', 'B-Flute', 'Giấy carton 3 lớp nhẹ, phù hợp cho đóng gói hàng hóa tiêu dùng và bảo vệ sản phẩm.', 4500),
-('pack-3layer-b', 'Giấy Carton 3 Lớp B', '3 lớp', '3 lớp', 'Kraftliner', 'C-Flute', 'Sản phẩm 3 lớp cao cấp hơn với độ bền tăng cường cho hàng hóa nặng vừa.', 5500),
-('pack-5layer-a', 'Giấy Carton 5 Lớp A', '5 lớp', '5 lớp', 'Kraftliner', 'BC-Flute', 'Giấy carton 5 lớp gia cố tối đa dành cho thiết kế bao bì chịu lực và vận chuyển chuyên nghiệp.', 9800),
-('pack-5layer-b', 'Giấy Carton 5 Lớp B', '5 lớp', '5 lớp', 'Testliner', 'EB-Flute', 'Giấy 5 lớp thân thiện với môi trường, đa dụng cho sản phẩm nội thất, điện tử và vật tư công nghiệp.', 10200);
+INSERT INTO products (id, name, category, layers, linerboard, medium, flute_a, flute_b, description, price) VALUES
+('pack-3layer-a', 'Giấy Carton 3 Lớp A', '3 lớp', '3 lớp', 'Testliner', 'Custom', 1.15, NULL, 'Giấy carton 3 lớp nhẹ, phù hợp cho đóng gói hàng hóa tiêu dùng và bảo vệ sản phẩm.', 4500),
+('pack-3layer-b', 'Giấy Carton 3 Lớp B', '3 lớp', '3 lớp', 'Kraftliner', 'Custom', 1.20, NULL, 'Sản phẩm 3 lớp cao cấp hơn với độ bền tăng cường cho hàng hóa nặng vừa.', 5500),
+('pack-5layer-a', 'Giấy Carton 5 Lớp A', '5 lớp', '5 lớp', 'Kraftliner', 'Custom', 1.15, 1.20, 'Giấy carton 5 lớp gia cố tối đa dành cho thiết kế bao bì chịu lực và vận chuyển chuyên nghiệp.', 9800),
+('pack-5layer-b', 'Giấy Carton 5 Lớp B', '5 lớp', '5 lớp', 'Testliner', 'Custom', 1.10, 1.18, 'Giấy 5 lớp thân thiện với môi trường, đa dụng cho sản phẩm nội thất, điện tử và vật tư công nghiệp.', 10200);
 
 -- Note: Sample orders and messages will be created when users sign up
 -- INSERT INTO orders (id, user_id, status, summary, date) VALUES

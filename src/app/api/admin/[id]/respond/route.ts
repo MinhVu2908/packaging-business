@@ -8,7 +8,7 @@ function sanitizeFilename(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]/g, '_')
 }
 
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient()
   const {
     data: { user },
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const designRequestId = params.id
+  const { id: designRequestId } = await params
   const formData = await request.formData()
   const adminNotes = formData.get('admin_notes')?.toString() || null
   const status = formData.get('status')?.toString() || 'review_ready'

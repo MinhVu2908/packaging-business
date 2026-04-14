@@ -47,10 +47,21 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json()
-  const { name, category, layers, linerboard, medium, description, price } = body
+  const { name, category, layers, linerboard, medium, flute_a, flute_b, description, price } = body
 
-  if (!name || !category || !layers || !linerboard || !medium || !description || typeof price !== 'number') {
+  if (!name || !category || !layers || !linerboard || !description || typeof price !== 'number') {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+  }
+
+  const normalizedMedium = typeof medium === 'string' && medium.trim().length > 0 ? medium.trim() : 'Custom'
+  const parsedFluteA = typeof flute_a === 'number' ? flute_a : flute_a != null ? Number(flute_a) : null
+  const parsedFluteB = typeof flute_b === 'number' ? flute_b : flute_b != null ? Number(flute_b) : null
+
+  if (!(parsedFluteA == null || Number.isFinite(parsedFluteA))) {
+    return NextResponse.json({ error: 'Invalid flute_a' }, { status: 400 })
+  }
+  if (!(parsedFluteB == null || Number.isFinite(parsedFluteB))) {
+    return NextResponse.json({ error: 'Invalid flute_b' }, { status: 400 })
   }
 
   const id = `prod-${Date.now()}`
@@ -62,7 +73,9 @@ export async function POST(request: NextRequest) {
       category,
       layers,
       linerboard,
-      medium,
+      medium: normalizedMedium,
+      flute_a: parsedFluteA,
+      flute_b: parsedFluteB,
       description,
       price,
     })

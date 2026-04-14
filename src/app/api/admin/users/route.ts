@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient, createClient } from '@/lib/supabase-server'
 import { requireAdmin } from '@/lib/user-profiles'
+import { countOrderItemsByStatus } from '@/lib/order-item-status'
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient()
@@ -20,7 +21,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const [{ data: profiles, error: profilesError }, { data: orders, error: ordersError }, { data: cartItems, error: cartItemsError }, { data: designRequests, error: designRequestsError }] = await Promise.all([
+  const [
+    { data: profiles, error: profilesError },
+    { data: orders, error: ordersError },
+    { data: cartItems, error: cartItemsError },
+    { data: designRequests, error: designRequestsError },
+    { data: orderItems, error: orderItemsError },
+  ] = await Promise.all([
     adminSupabase
       .from('user_profiles')
       .select(`
@@ -45,10 +52,12 @@ export async function GET(request: NextRequest) {
       .from('design_requests')
       .select('id,cart_item_id,user_id,status,admin_notes,customer_notes,customer_confirmed,created_at,updated_at')
       .order('created_at', { ascending: false }),
+    adminSupabase.from('order_items').select('user_id, item_status'),
   ])
 
-  if (profilesError || ordersError || cartItemsError || designRequestsError) {
-    const error = profilesError || ordersError || cartItemsError || designRequestsError
+  if (profilesError || ordersError || cartItemsError || designRequestsError || orderItemsError) {
+    const error =
+      profilesError || ordersError || cartItemsError || designRequestsError || orderItemsError
     return NextResponse.json({ error: error?.message ?? 'Failed to load users' }, { status: 500 })
   }
 
@@ -57,6 +66,15 @@ export async function GET(request: NextRequest) {
     acc[order.user_id] = [...(acc[order.user_id] || []), order]
     return acc
   }, {})
+
+  const orderItemsByUser = (orderItems || []).reduce<Record<string, { item_status: string | null }[]>>(
+    (acc, row) => {
+      if (!row.user_id) return acc
+      acc[row.user_id] = [...(acc[row.user_id] || []), row]
+      return acc
+    },
+    {}
+  )
 
   const cartItemsByUser = (cartItems || []).reduce<Record<string, any[]>>((acc, item) => {
     if (!item.user_id) return acc
@@ -118,12 +136,14 @@ export async function GET(request: NextRequest) {
       orders: ordersByUser[profile.id] || [],
       cart_items: cartItemsByUser[profile.id] || [],
       design_requests: designRequestsByUser[profile.id] || [],
+      itemLineCounts: countOrderItemsByStatus(orderItemsByUser[profile.id] || []),
     })),
     ...fallbackUsers.map((user) => ({
       ...user,
       orders: ordersByUser[user.id] || [],
       cart_items: cartItemsByUser[user.id] || [],
       design_requests: designRequestsByUser[user.id] || [],
+      itemLineCounts: countOrderItemsByStatus(orderItemsByUser[user.id] || []),
     })),
   ]
 

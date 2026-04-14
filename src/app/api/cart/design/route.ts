@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  await ensureUserProfile(supabase, user.id, user.email ?? undefined)
+  await ensureUserProfile(supabase, user)
 
   const formData = await request.formData()
   const cart_item_id = formData.get('cart_item_id')?.toString()
@@ -130,7 +130,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  await ensureUserProfile(supabase, user.id, user.email ?? undefined)
+  await ensureUserProfile(supabase, user)
 
   const body = await request.json()
   const cart_item_id = body.cart_item_id?.toString()

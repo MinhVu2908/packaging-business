@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import CartItemDetail from "@/components/CartItemDetail";
 
@@ -43,6 +44,7 @@ type CartItem = {
 };
 
 export default function CartPage() {
+  const router = useRouter();
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -52,6 +54,7 @@ export default function CartPage() {
   const [uploadingDesignId, setUploadingDesignId] = useState<string | null>(null);
   const [confirmingDesignId, setConfirmingDesignId] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<CartItem | null>(null);
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
 
   const loadCart = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -71,6 +74,7 @@ export default function CartPage() {
 
     const data = await res.json();
     setItems(data);
+    setSelectedItemIds([]);
     setLoading(false);
   };
 
@@ -97,6 +101,7 @@ export default function CartPage() {
     const res = await fetch(`/api/cart?id=${id}`, { method: 'DELETE' });
     if (!res.ok) return;
     setItems(items.filter((item) => item.id !== id));
+    setSelectedItemIds((prev) => prev.filter((selectedId) => selectedId !== id));
   };
 
   const handleFileChange = (id: string, files: FileList | null) => {
@@ -104,6 +109,41 @@ export default function CartPage() {
       ...prev,
       [id]: files ? Array.from(files) : [],
     }));
+  };
+
+  const selectedItems = items.filter((item) => selectedItemIds.includes(item.id));
+  const selectedTotal = selectedItems.reduce((total, item) => total + item.total_price, 0);
+  const selectedAllConfirmed = selectedItems.length > 0 && selectedItems.every((item) => item.design_request?.status === 'confirmed');
+
+  const toggleSelectItem = (itemId: string, available: boolean) => {
+    if (!available) return;
+    setSelectedItemIds((prev) =>
+      prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]
+    );
+  };
+
+  const handlePurchaseSelected = async () => {
+    if (!selectedAllConfirmed || selectedItemIds.length === 0) return;
+
+    setError('');
+    const res = await fetch('/api/cart/purchase', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cart_item_ids: selectedItemIds }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data?.error ?? 'Không thể tạo đơn hàng.');
+      return;
+    }
+
+    const data = await res.json();
+    const orderId = data?.order?.id as string | undefined;
+    await loadCart();
+    if (orderId) {
+      router.push(`/account/orders/${orderId}`);
+    }
   };
 
   const handleUploadDesign = async (cartItemId: string) => {
@@ -231,14 +271,35 @@ export default function CartPage() {
               {items.map((item) => {
                 const customerFiles = item.design_request?.files.filter((file) => file.type === 'customer_upload') || [];
                 const adminFiles = item.design_request?.files.filter((file) => file.type === 'admin_response') || [];
+                const isConfirmed = item.design_request?.status === 'confirmed';
+                const isSelected = selectedItemIds.includes(item.id);
 
                 return (
                   <div key={item.id} className="rounded-3xl border border-slate-200 p-6">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                      <div>
-                        <p className="text-base font-semibold text-slate-900">{item.products.name}</p>
-                        <p className="mt-1 text-sm text-slate-600">Loại: {item.products.layers} · Kích thước: {item.length_mm} x {item.width_mm} mm</p>
-                        <p className="mt-2 text-sm text-slate-600">Chi tiết: {Object.entries(item.options).map(([key, value]) => value ? `${key}: ${value}` : null).filter(Boolean).join(', ')}</p>
+                      <div className="flex flex-col gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <label className="flex items-center gap-2 text-sm text-slate-700">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              disabled={!isConfirmed}
+                              onChange={() => toggleSelectItem(item.id, isConfirmed)}
+                              className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
+                            />
+                            Chọn mua
+                          </label>
+                          {!isConfirmed && (
+                            <span className="rounded-full bg-yellow-100 px-2 py-1 text-xs font-semibold text-yellow-800">
+                              Chỉ mua khi đã xác nhận
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-base font-semibold text-slate-900">{item.products.name}</p>
+                          <p className="mt-1 text-sm text-slate-600">Loại: {item.products.layers} · Kích thước: {item.length_mm} x {item.width_mm} mm</p>
+                          <p className="mt-2 text-sm text-slate-600">Chi tiết: {Object.entries(item.options).map(([key, value]) => value ? `${key}: ${value}` : null).filter(Boolean).join(', ')}</p>
+                        </div>
                       </div>
                       <div className="flex flex-col gap-3 text-right">
                         <div className="flex items-center justify-end gap-3">
@@ -396,19 +457,24 @@ export default function CartPage() {
             </div>
 
             <div className="rounded-3xl bg-slate-50 p-4 text-sm text-slate-600">
-              <p className="font-semibold text-slate-900">Phương thức thanh toán</p>
-              <ul className="mt-3 space-y-2">
-                <li>• Chuyển khoản ngân hàng</li>
-                <li>• Thanh toán khi nhận hàng (COD)</li>
-                <li>• Thẻ tín dụng / ATM</li>
-              </ul>
+              <p className="font-semibold text-slate-900">Mua sản phẩm đã chọn</p>
+              <p className="mt-2">Số mục đã chọn: {selectedItems.length}</p>
+              <p className="mt-1">Tổng chọn: {selectedTotal.toLocaleString()}đ</p>
+              <p className="mt-2 text-xs text-slate-500">
+                Chỉ những sản phẩm có thiết kế đã xác nhận mới có thể mua.
+              </p>
             </div>
 
             <button
-              disabled={items.length === 0}
+              onClick={handlePurchaseSelected}
+              disabled={!selectedAllConfirmed || selectedItems.length === 0}
               className="w-full rounded-lg bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Tiến hành thanh toán
+              {selectedItems.length === 0
+                ? 'Chọn sản phẩm để mua'
+                : selectedAllConfirmed
+                ? 'Mua sản phẩm đã chọn'
+                : 'Có sản phẩm chưa xác nhận'}
             </button>
           </div>
         </div>

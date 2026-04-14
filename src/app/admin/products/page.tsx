@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
 import { useAdminGuard } from '@/lib/useAdminGuard'
 
 type Product = {
@@ -11,6 +10,8 @@ type Product = {
   layers: string
   linerboard: string
   medium: string
+  flute_a?: number | null
+  flute_b?: number | null
   description: string
   price: number
   created_at: string
@@ -28,18 +29,15 @@ export default function AdminProductsPage() {
     category: '',
     layers: '',
     linerboard: '',
-    medium: '',
+    flute_a: '',
+    flute_b: '',
     description: '',
     price: '',
   })
   const [submitting, setSubmitting] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
 
-  useEffect(() => {
-    loadProducts()
-  }, [])
-
-  const loadProducts = async () => {
+  async function loadProducts() {
     setLoading(true)
     setError('')
 
@@ -54,6 +52,11 @@ export default function AdminProductsPage() {
     setProducts(data)
     setLoading(false)
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadProducts()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -70,7 +73,9 @@ export default function AdminProductsPage() {
       category: formData.category,
       layers: formData.layers,
       linerboard: formData.linerboard,
-      medium: formData.medium,
+      medium: 'Custom',
+      flute_a: formData.flute_a === '' ? null : Number(formData.flute_a),
+      flute_b: formData.flute_b === '' ? null : Number(formData.flute_b),
       description: formData.description,
       price: parseInt(formData.price),
     }
@@ -101,7 +106,8 @@ export default function AdminProductsPage() {
       category: '',
       layers: '',
       linerboard: '',
-      medium: '',
+      flute_a: '',
+      flute_b: '',
       description: '',
       price: '',
     })
@@ -118,7 +124,8 @@ export default function AdminProductsPage() {
       category: product.category,
       layers: product.layers,
       linerboard: product.linerboard,
-      medium: product.medium,
+      flute_a: product.flute_a == null ? '' : String(product.flute_a),
+      flute_b: product.flute_b == null ? '' : String(product.flute_b),
       description: product.description,
       price: String(product.price),
     })
@@ -266,21 +273,33 @@ export default function AdminProductsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700">Medium</label>
-                  <select
-                    value={formData.medium}
-                    onChange={(e) => setFormData({ ...formData, medium: e.target.value })}
+                  <label className="block text-sm font-medium text-slate-700">Flute a (hệ số sóng 1)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.flute_a}
+                    onChange={(e) => setFormData({ ...formData, flute_a: e.target.value })}
                     required
                     className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
-                  >
-                    <option value="">Chọn medium</option>
-                    <option value="B-Flute">B-Flute</option>
-                    <option value="C-Flute">C-Flute</option>
-                    <option value="BC-Flute">BC-Flute</option>
-                    <option value="EB-Flute">EB-Flute</option>
-                  </select>
+                  />
                 </div>
               </div>
+
+              {formData.layers.includes('5') && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">Flute b (hệ số sóng 2)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.flute_b}
+                    onChange={(e) => setFormData({ ...formData, flute_b: e.target.value })}
+                    required
+                    className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-slate-700">Mô tả</label>

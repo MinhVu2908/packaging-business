@@ -30,7 +30,7 @@ export default function AdminLayout({
                   href="/admin/design-requests"
                   className="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium text-slate-500 hover:border-slate-300 hover:text-slate-700"
                 >
-                  Thiết kế
+                  Yêu Cầu Khách Hàng
                 </a>
                 <a
                   href="/admin/products"
@@ -53,12 +53,12 @@ export default function AdminLayout({
               </div>
             </div>
             <div className="flex items-center">
-              <a
+              {/* <a
                 href="/"
                 className="text-sm font-medium text-slate-500 hover:text-slate-700"
               >
                 ← Quay lại cửa hàng
-              </a>
+              </a> */}
             </div>
           </div>
         </div>

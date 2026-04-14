@@ -38,6 +38,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: 'Order not found' }, { status: 404 })
   }
 
+  const { data: orderItems, error: itemsError } = await supabase
+    .from('order_items')
+    .select(
+      'id, line_index, po_number, product_name, quantity, unit_price, total_price, length_mm, width_mm, options, item_status'
+    )
+    .eq('order_id', orderId)
+    .order('line_index', { ascending: true })
+
+  if (itemsError) {
+    return NextResponse.json({ error: itemsError.message }, { status: 500 })
+  }
+
   const { data: profile, error: profileError } = await supabase
     .from('user_profiles')
     .select('id,company_name,contact_name,phone')
@@ -51,6 +63,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   return NextResponse.json({
     ...order,
     user_profile: profile || null,
+    order_items: orderItems || [],
   })
 }
 

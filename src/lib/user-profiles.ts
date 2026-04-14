@@ -1,10 +1,10 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { SupabaseClient, User } from '@supabase/supabase-js'
 
-export async function ensureUserProfile(supabase: SupabaseClient, userId: string, email?: string) {
+export async function ensureUserProfile(supabase: SupabaseClient, user: User) {
   const { data: existing, error: existingError } = await supabase
     .from('user_profiles')
     .select('id')
-    .eq('id', userId)
+    .eq('id', user.id)
     .maybeSingle()
 
   if (existingError) {
@@ -15,14 +15,15 @@ export async function ensureUserProfile(supabase: SupabaseClient, userId: string
     return existing
   }
 
-  const contact_name = email?.split('@')[0] ?? null
+  const contact_name = user.email?.split('@')[0] ?? null
+  const rawMeta = user.user_metadata || {}
   const { data, error } = await supabase
     .from('user_profiles')
     .insert({
-      id: userId,
-      company_name: null,
+      id: user.id,
+      company_name: rawMeta.company_name || null,
       contact_name,
-      phone: null,
+      phone: rawMeta.phone || null,
       role: 'customer',
     })
     .select()
