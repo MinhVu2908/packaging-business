@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
 import { useAdminGuard } from '@/lib/useAdminGuard'
 import {
   ORDER_ITEM_STATUSES,
@@ -91,7 +90,6 @@ function orderStatusBadgeClass(status: string) {
 }
 
 export default function AdminOrdersPage() {
-  const searchParams = useSearchParams()
   const [customers, setCustomers] = useState<CustomerOverview[]>([])
   const [orders, setOrders] = useState<OrderRow[]>([])
   const [selectedUserId, setSelectedUserId] = useState<string>('all')
@@ -106,9 +104,10 @@ export default function AdminOrdersPage() {
   }, [])
 
   useEffect(() => {
-    const userFromQuery = searchParams.get('userId')
+    const params = new URLSearchParams(window.location.search)
+    const userFromQuery = params.get('userId')
     setSelectedUserId(userFromQuery || 'all')
-  }, [searchParams])
+  }, [])
 
   const loadAll = async () => {
     setLoading(true)
