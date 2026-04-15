@@ -55,7 +55,7 @@ export default function AdminOrderDetailPage() {
     setLoading(true)
     setError('')
 
-    const res = await fetch(`/api/admin/orders/${params.id}`)
+    const res = await fetch(`/api/admin/orders/${encodeURIComponent(params.id)}`)
     if (!res.ok) {
       setError('Không thể tải chi tiết đơn hàng.')
       setLoading(false)
@@ -95,7 +95,21 @@ export default function AdminOrderDetailPage() {
 
   if (!order) {
     return (
-      <div className="p-8 text-center text-slate-600">Đơn hàng không tồn tại.</div>
+      <div className="p-8 space-y-4">
+        {error ? (
+          <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700">{error}</div>
+        ) : (
+          <p className="text-center text-slate-600">Đơn hàng không tồn tại.</p>
+        )}
+        <div className="text-center">
+          <Link
+            href="/admin/orders"
+            className="inline-block text-sm font-semibold text-slate-900 underline"
+          >
+            Về danh sách đơn hàng
+          </Link>
+        </div>
+      </div>
     )
   }
 

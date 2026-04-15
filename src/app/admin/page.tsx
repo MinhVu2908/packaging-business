@@ -71,16 +71,16 @@ export default function AdminDashboardPage() {
           href="/admin/orders"
           className="rounded-lg border border-slate-200 bg-white p-6 transition hover:shadow-md"
         >
-          <h3 className="text-lg font-semibold text-slate-900">Quản lý đơn hàng</h3>
-          <p className="mt-2 text-sm text-slate-600">Xem và quản lý tất cả đơn hàng</p>
+          <h3 className="text-lg font-semibold text-slate-900">Đơn hàng</h3>
+          <p className="mt-2 text-sm text-slate-600">Theo khách hàng (PO), danh sách đơn và chi tiết dòng</p>
         </Link>
 
         <Link
           href="/admin/users"
           className="rounded-lg border border-slate-200 bg-white p-6 transition hover:shadow-md"
         >
-          <h3 className="text-lg font-semibold text-slate-900">Quản lý người dùng</h3>
-          <p className="mt-2 text-sm text-slate-600">Xem thông tin và hoạt động của người dùng</p>
+          <h3 className="text-lg font-semibold text-slate-900">Người dùng</h3>
+          <p className="mt-2 text-sm text-slate-600">Hồ sơ liên hệ, giỏ hàng và yêu cầu thiết kế</p>
         </Link>
       </div>
     </div>

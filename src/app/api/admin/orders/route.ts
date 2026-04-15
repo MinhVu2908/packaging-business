@@ -1,9 +1,19 @@
 'use server'
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase-server'
+import { createAdminClient, createClient } from '@/lib/supabase-server'
 import { requireAdmin } from '@/lib/user-profiles'
 import { orderSortKeyFromItemStatuses } from '@/lib/order-item-status'
+
+function deriveEffectiveStatus(items: { item_status: string }[], fallbackStatus: string): string {
+  if (items.length === 0) return fallbackStatus || 'pending'
+  const statuses = items.map((item) => item.item_status || 'pending')
+  if (statuses.every((s) => s === 'cancelled')) return 'cancelled'
+  if (statuses.every((s) => s === 'delivered')) return 'delivered'
+  if (statuses.some((s) => s === 'on_delivery')) return 'on_delivery'
+  if (statuses.some((s) => s === 'pending')) return 'pending'
+  return fallbackStatus || 'pending'
+}
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient()
@@ -20,7 +30,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { data: orders, error } = await supabase
+  const db = await createAdminClient()
+
+  const { data: orders, error } = await db
     .from('orders')
     .select(`
       id,
@@ -45,10 +57,10 @@ export async function GET(request: NextRequest) {
 
   const [{ data: profiles, error: profileError }, { data: allItems, error: itemsError }] = await Promise.all([
     userIds.length > 0
-      ? supabase.from('user_profiles').select('id,company_name,contact_name,phone').in('id', userIds)
+      ? db.from('user_profiles').select('id,company_name,contact_name,phone').in('id', userIds)
       : Promise.resolve({ data: [] as { id: string; company_name: string | null; contact_name: string | null; phone: string | null }[], error: null }),
     orderIds.length > 0
-      ? supabase.from('order_items').select('order_id, item_status').in('order_id', orderIds)
+      ? db.from('order_items').select('order_id, item_status').in('order_id', orderIds)
       : Promise.resolve({ data: [] as { order_id: string; item_status: string }[], error: null }),
   ])
 
@@ -71,11 +83,17 @@ export async function GET(request: NextRequest) {
   }, {})
 
   const ordersWithProfiles = orders
-    .map((order) => ({
-      ...order,
-      user_profile: profileMap[order.user_id] || null,
-      _sortKey: orderSortKeyFromItemStatuses(itemsByOrder[order.id] || []),
-    }))
+    .map((order) => {
+      const effectiveStatus = deriveEffectiveStatus(itemsByOrder[order.id] || [], order.status)
+      return {
+        ...order,
+        status: effectiveStatus,
+        raw_status: order.status,
+        user_profile: profileMap[order.user_id] || null,
+        effective_status: effectiveStatus,
+        _sortKey: orderSortKeyFromItemStatuses(itemsByOrder[order.id] || []),
+      }
+    })
     .sort((a, b) => {
       if (a._sortKey !== b._sortKey) return a._sortKey - b._sortKey
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
